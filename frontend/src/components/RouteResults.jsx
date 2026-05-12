@@ -1,6 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Sparkles, Clock, Bus as BusIcon, ChevronRight, AlertTriangle } from "lucide-react";
+import { Clock, ChevronRight } from "lucide-react";
 
 const statusColor = {
   on_time: "bg-green-600 text-white",
@@ -8,7 +7,7 @@ const statusColor = {
   cancelled: "bg-red-600 text-white",
 };
 
-export default function RouteResults({ results, recommendation, onSelect, onReport }) {
+export default function RouteResults({ results, onSelect }) {
   if (!results) return null;
   const { buses = [], origin_stop, destination_stop } = results;
 
@@ -16,7 +15,9 @@ export default function RouteResults({ results, recommendation, onSelect, onRepo
     return (
       <div className="p-5" data-testid="no-results">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">NO MATCH</p>
-        <p className="text-sm">No stops matched your search. Try names like <span className="font-bold">Times Square</span> or <span className="font-bold">Wall Street</span>.</p>
+        <p className="text-sm">
+          No stops matched your search. Try names like <span className="font-bold">Times Square</span> or <span className="font-bold">Wall Street</span>.
+        </p>
       </div>
     );
   }
@@ -24,7 +25,9 @@ export default function RouteResults({ results, recommendation, onSelect, onRepo
     return (
       <div className="p-5" data-testid="no-buses">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">NO DIRECT BUS</p>
-        <p className="text-sm">No buses currently connect <span className="font-bold">{origin_stop.name}</span> to <span className="font-bold">{destination_stop.name}</span>.</p>
+        <p className="text-sm">
+          No buses currently connect <span className="font-bold">{origin_stop.name}</span> to <span className="font-bold">{destination_stop.name}</span>.
+        </p>
       </div>
     );
   }
@@ -35,21 +38,10 @@ export default function RouteResults({ results, recommendation, onSelect, onRepo
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
           {buses.length} BUS{buses.length > 1 ? "ES" : ""} FOUND
         </p>
-        <span className="text-xs text-muted-foreground">{origin_stop.name} → {destination_stop.name}</span>
+        <span className="text-xs text-muted-foreground truncate ml-2">
+          {origin_stop.name} → {destination_stop.name}
+        </span>
       </div>
-
-      {recommendation && recommendation.recommendation && (
-        <div className="border border-foreground rounded-md p-3 bg-secondary" data-testid="ai-recommendation">
-          <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="w-4 h-4" />
-            <p className="text-xs font-bold uppercase tracking-[0.2em]">AI Pick</p>
-          </div>
-          <p className="text-sm font-bold">
-            Bus {recommendation.recommendation.number} — {recommendation.recommendation.name}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">{recommendation.explanation}</p>
-        </div>
-      )}
 
       <div className="space-y-2 max-h-[40vh] overflow-y-auto no-scrollbar">
         {buses.map((b) => (
@@ -72,22 +64,15 @@ export default function RouteResults({ results, recommendation, onSelect, onRepo
                 </div>
               </div>
               <div className="flex flex-col items-end gap-1">
-                <Badge className={`${statusColor[b.status]} rounded-sm uppercase text-[10px] tracking-wider`}>{b.status.replace("_", " ")}</Badge>
+                <Badge className={`${statusColor[b.status]} rounded-sm uppercase text-[10px] tracking-wider`}>
+                  {b.status.replace("_", " ")}
+                </Badge>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </div>
             </div>
           </button>
         ))}
       </div>
-
-      <Button
-        onClick={onReport}
-        variant="outline"
-        data-testid="open-report-button"
-        className="w-full rounded-md border-foreground"
-      >
-        <AlertTriangle className="w-4 h-4 mr-2" /> Report an issue
-      </Button>
     </div>
   );
 }
