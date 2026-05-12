@@ -1,0 +1,34 @@
+{
+  "summary": "Iteration 3 backend tests: all 29 pytest cases PASSED. Verified new 'direction' field, new status enum (running|delayed|arriving|cancelled), ETA penalties (delayed +8, cancelled +30, arriving 0), seed defaults (status='running', direction=null), bus ordering, SocketIO bus_added & bus_location events on /api/socket.io still work post schema change. No 'on_time' present in seed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/buses", "issue": "Duplicate stop_ids in stops[] (e.g. stops=[A,A]) are incorrectly rejected with 400 'one or more stops not found'. Root cause: validator compares len(SELECT ... WHERE stop_id IN (?,?)) (deduped by SQLite to 1 row) against len(stops)=2. Fix: validate with set(stops) instead — e.g. assert set(found_ids) >= set(stops). Documented in test_create_bus_same_source_dest_stops_documented_behaviour."},
+      {"endpoint": "POST /api/buses", "issue": "Status field is NOT validated against the enum {running, delayed, arriving, cancelled}. Any arbitrary string is accepted and persisted (e.g. status='foo' would store as-is). Consider adding server-side enum validation to match frontend constants in /app/frontend/src/lib/status.js."},
+      {"endpoint": "POST /api/buses/{id}/location", "issue": "status param also unvalidated — same enum-mismatch risk."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Optional: fix duplicate-stop_id validator bug in POST /api/buses (use set comparison).",
+    "Optional: add server-side status enum validation on POST /api/buses and POST /api/buses/{id}/location."
+  ],
+  "critical_code_review_comments": [
+    "server.py create_bus stop-existence check uses `len(found) != len(stops)` which fails for duplicate stop_ids — replace with `set(found_ids) != set(stops)` so [A,A] is acceptable.",
+    "No enum guard for `status` on bus create or location update — backend silently accepts arbitrary strings; ETA penalty branches only match exact strings 'delayed'/'cancelled', anything else (typos, unexpected values) gets the base ETA with no signal.",
+    "Direction column normalization is good (empty/whitespace -> NULL via `(body.get('direction') or '').strip() or None`).",
+    "Test suite is session-scoped; persistent SQLite means TEST_* buses accumulate across runs. Consider a session-scope teardown that deletes WHERE number LIKE 'TEST_%' for hygiene (not blocking)."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "100%", "frontend": "n/a"},
+  "test_credentials": "n/a — no auth in this app",
+  "seed_data_creation": "Tests create TEST_* prefixed buses/stops (TEST_QA_Stop, TEST_X1, TEST_DIR_NULL, TEST_DIR_EMPTY, TEST_ST_{enum}, TEST_SAME_SD, TEST_ETA_{enum}, TEST_SOCK1). These persist in transitpulse.db across runs but the seeded-buses test was scoped to {M15,B25,M5,Q44} so re-runs are stable.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend test file /app/backend/tests/backend_test.py is the canonical regression suite. Run via `cd /app/backend && python -m pytest tests/backend_test.py -v --junitxml=/app/test_reports/pytest/pytest_results.xml`. Two known validator gaps (duplicate stop_ids rejected, no status enum guard) are documented as minor issues — main agent should decide whether to harden. Seed buses now use status='running' (legacy 'on_time' is gone). SocketIO path /api/socket.io confirmed working with websocket transport.",
+  "rca of the issue": "Duplicate stop_id RCA: `SELECT stop_id FROM stops WHERE stop_id IN (?,?)` with both bind params equal collapses to one row in result set. The validator then sees len(rows)=1 != len(stops)=2 and returns 400 'one or more stops not found' — misleading message because the stop DOES exist. Reproduction: POST /api/buses with {number:'X',name:'Y',stops:[<valid_sid>, <valid_sid>]}. Mitigation: replace existence check with `set(r['stop_id'] for r in found) >= set(stops)`."
+}

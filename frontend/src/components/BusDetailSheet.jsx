@@ -4,12 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { get } from "@/lib/api";
 import { Clock, Radio, LocateFixed } from "lucide-react";
-
-const statusColor = {
-  on_time: "bg-green-600 text-white",
-  delayed: "bg-yellow-500 text-black",
-  cancelled: "bg-red-600 text-white",
-};
+import { statusBadge, statusLabel } from "@/lib/status";
 
 function timeAgo(iso) {
   if (!iso) return "—";
@@ -55,9 +50,12 @@ export default function BusDetailSheet({ bus, open, onClose, onUpdateLocation })
                 {bus.name}
               </SheetTitle>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <Badge className={`${statusColor[bus.status]} rounded-sm uppercase text-[10px] tracking-wider`}>
-                  {bus.status.replace("_", " ")}
+                <Badge className={`${statusBadge(bus.status)} rounded-sm uppercase text-[10px] tracking-wider`}>
+                  {statusLabel(bus.status)}
                 </Badge>
+                {bus.direction && (
+                  <span className="text-xs text-muted-foreground truncate">{bus.direction}</span>
+                )}
                 {bus.eta_min != null && (
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <Clock className="w-3 h-3" /> {bus.eta_min} min ETA
@@ -69,17 +67,6 @@ export default function BusDetailSheet({ bus, open, onClose, onUpdateLocation })
         </SheetHeader>
 
         <div className="p-5 space-y-5">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="border border-border rounded-md p-3">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">DEPARTURE</p>
-              <p className="font-display font-bold text-2xl mt-1">{bus.departure_time}</p>
-            </div>
-            <div className="border border-border rounded-md p-3">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">ARRIVAL</p>
-              <p className="font-display font-bold text-2xl mt-1">{bus.arrival_time}</p>
-            </div>
-          </div>
-
           <div className="border-2 border-foreground rounded-md p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
@@ -113,12 +100,27 @@ export default function BusDetailSheet({ bus, open, onClose, onUpdateLocation })
               {stopsList.map((s, idx) => (
                 <div key={s.stop_id} className="flex items-center gap-3" data-testid={`stop-row-${s.stop_id}`}>
                   <div className="flex flex-col items-center">
-                    <div className="w-3 h-3 rounded-full bg-foreground" />
-                    {idx < stopsList.length - 1 && <div className="w-0.5 h-6 bg-foreground/40" />}
+                    <div className={`w-3 h-3 rounded-full ${idx === 0 || idx === stopsList.length - 1 ? "bg-foreground" : "bg-foreground/60"}`} />
+                    {idx < stopsList.length - 1 && <div className="w-0.5 h-6 bg-foreground/30" />}
                   </div>
-                  <p className="text-sm font-medium">{s.name}</p>
+                  <p className="text-sm font-medium">
+                    {s.name}
+                    {idx === 0 && <span className="text-[10px] uppercase tracking-wider text-muted-foreground ml-2">start</span>}
+                    {idx === stopsList.length - 1 && <span className="text-[10px] uppercase tracking-wider text-muted-foreground ml-2">end</span>}
+                  </p>
                 </div>
               ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="border border-border rounded-md p-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">DEPARTURE</p>
+              <p className="font-display font-bold text-xl mt-1">{bus.departure_time}</p>
+            </div>
+            <div className="border border-border rounded-md p-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">ARRIVAL</p>
+              <p className="font-display font-bold text-xl mt-1">{bus.arrival_time}</p>
             </div>
           </div>
         </div>

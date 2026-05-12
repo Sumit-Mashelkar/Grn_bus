@@ -71,9 +71,10 @@ def init_db():
             bus_id        TEXT PRIMARY KEY,
             number        TEXT NOT NULL,
             name          TEXT NOT NULL,
+            direction     TEXT,
             departure_time TEXT NOT NULL DEFAULT '06:00',
             arrival_time   TEXT NOT NULL DEFAULT '22:00',
-            status        TEXT NOT NULL DEFAULT 'on_time',
+            status        TEXT NOT NULL DEFAULT 'running',
             current_lat   REAL,
             current_lng   REAL,
             last_update   TEXT,
@@ -158,6 +159,7 @@ def bus_row(r: sqlite3.Row, db: sqlite3.Connection, with_stops: bool = False) ->
         "bus_id": r["bus_id"],
         "number": r["number"],
         "name": r["name"],
+        "direction": r["direction"] if "direction" in r.keys() else None,
         "departure_time": r["departure_time"],
         "arrival_time": r["arrival_time"],
         "status": r["status"],
@@ -246,12 +248,13 @@ def create_bus():
 
     bid = uid("bus")
     db.execute(
-        "INSERT INTO buses (bus_id, number, name, departure_time, arrival_time, status, created_at)"
-        " VALUES (?,?,?,?,?,?,?)",
+        "INSERT INTO buses (bus_id, number, name, direction, departure_time, arrival_time, status, created_at)"
+        " VALUES (?,?,?,?,?,?,?,?)",
         (bid, number, name,
+         (body.get("direction") or "").strip() or None,
          body.get("departure_time", "06:00"),
          body.get("arrival_time", "22:00"),
-         body.get("status", "on_time"),
+         body.get("status", "running"),
          now_iso()),
     )
     for pos, sid in enumerate(stops):
@@ -348,6 +351,8 @@ def search_routes():
         eta_min = max(1, int(dist / 25 * 60) + 2)  # 25 km/h avg
         if b["status"] == "delayed":
             eta_min += 8
+        elif b["status"] == "cancelled":
+            eta_min += 30
         bus = bus_row(b, db)
         bus["eta_min"] = eta_min
         bus["from_stop"] = stop_row(o_stop)

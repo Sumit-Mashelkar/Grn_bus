@@ -1,10 +1,10 @@
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import { useEffect, useMemo } from "react";
+import { statusColor } from "@/lib/status";
 
 const ICON_BUS = (number, status, dark) => {
-  const colors = { on_time: "#16A34A", delayed: "#EAB308", cancelled: "#DC2626" };
-  const color = colors[status] || "#16A34A";
+  const color = statusColor(status);
   const ring = dark ? "#FAFAFA" : "#09090B";
   return L.divIcon({
     className: "bus-marker",

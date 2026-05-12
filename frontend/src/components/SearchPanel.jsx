@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, MapPin, Navigation } from "lucide-react";
+import { ArrowRight, MapPin, Navigation, ArrowUpDown, X } from "lucide-react";
 
-export default function SearchPanel({ onSearch, loading, stops = [] }) {
+export default function SearchPanel({ onSearch, onClear, loading, stops = [], hasResults = false }) {
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
 
@@ -18,63 +18,81 @@ export default function SearchPanel({ onSearch, loading, stops = [] }) {
     setDestination(origin);
   };
 
+  const clear = () => {
+    setOrigin("");
+    setDestination("");
+    onClear?.();
+  };
+
   return (
-    <form onSubmit={submit} className="space-y-3 p-5" data-testid="search-panel">
-      <div className="space-y-1">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">PLAN YOUR TRIP</p>
-        <h2 className="text-xl font-bold tracking-tight font-display">Where to?</h2>
-      </div>
-
-      <div className="relative space-y-2">
-        <div className="flex items-center gap-2">
-          <MapPin className="w-4 h-4 shrink-0 text-foreground" />
-          <Input
-            data-testid="origin-input"
-            placeholder="Start (e.g. Central Station)"
-            value={origin}
-            onChange={(e) => setOrigin(e.target.value)}
-            className="h-11 rounded-md border-border focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary"
-            list="stops-list"
-          />
+    <form onSubmit={submit} className="p-3 sm:p-4" data-testid="search-panel">
+      <div className="flex items-center gap-2">
+        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="relative">
+            <MapPin className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              data-testid="origin-input"
+              placeholder="From"
+              value={origin}
+              onChange={(e) => setOrigin(e.target.value)}
+              className="h-10 pl-7 rounded-md border-border focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary text-sm"
+              list="stops-list"
+            />
+          </div>
+          <div className="relative">
+            <Navigation className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              data-testid="destination-input"
+              placeholder="To"
+              value={destination}
+              onChange={(e) => setDestination(e.target.value)}
+              className="h-10 pl-7 rounded-md border-border focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary text-sm"
+              list="stops-list"
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Navigation className="w-4 h-4 shrink-0 text-foreground" />
-          <Input
-            data-testid="destination-input"
-            placeholder="Destination (e.g. Wall Street)"
-            value={destination}
-            onChange={(e) => setDestination(e.target.value)}
-            className="h-11 rounded-md border-border focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary"
-            list="stops-list"
-          />
-        </div>
-        <datalist id="stops-list">
-          {stops.map((s) => (
-            <option key={s.stop_id} value={s.name} />
-          ))}
-        </datalist>
-      </div>
 
-      <div className="flex gap-2">
         <Button
           type="button"
           variant="outline"
+          size="icon"
           onClick={swap}
           data-testid="swap-button"
-          className="rounded-md"
+          className="h-10 w-10 rounded-md shrink-0"
+          title="Swap"
         >
-          Swap
+          <ArrowUpDown className="w-4 h-4" />
         </Button>
         <Button
           type="submit"
+          size="icon"
           disabled={loading}
           data-testid="search-button"
-          className="flex-1 h-11 rounded-md bg-primary text-primary-foreground font-bold tracking-tight hover:-translate-y-0.5 transition-all"
+          className="h-10 w-10 rounded-md shrink-0 bg-primary text-primary-foreground"
+          title="Find buses"
         >
-          {loading ? "Searching…" : "Find buses"}
-          <ArrowRight className="w-4 h-4 ml-2" />
+          <ArrowRight className="w-4 h-4" />
         </Button>
+        {hasResults && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={clear}
+            data-testid="clear-search-button"
+            className="h-10 w-10 rounded-md shrink-0"
+            title="Clear"
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        )}
       </div>
+
+      <datalist id="stops-list">
+        {stops.map((s) => (
+          <option key={s.stop_id} value={s.name} />
+        ))}
+      </datalist>
     </form>
   );
 }

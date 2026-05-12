@@ -10,8 +10,13 @@ import AddBusDialog from "@/components/AddBusDialog";
 import AddStopDialog from "@/components/AddStopDialog";
 import UpdateLocationDialog from "@/components/UpdateLocationDialog";
 import { Button } from "@/components/ui/button";
-import { Sun, Moon, Plus, MapPin, Bus, Radio, LocateFixed } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sun, Moon, Plus, MapPin, Bus, Radio, LocateFixed, Search, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import { statusBadge, statusLabel } from "@/lib/status";
 
 export default function Home() {
   const { theme, toggle } = useTheme();
@@ -19,10 +24,12 @@ export default function Home() {
   const [buses, setBuses] = useState([]);
   const [results, setResults] = useState(null);
   const [searching, setSearching] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [selectedBus, setSelectedBus] = useState(null);
   const [addBusOpen, setAddBusOpen] = useState(false);
   const [addStopOpen, setAddStopOpen] = useState(false);
   const [updateLocBus, setUpdateLocBus] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [socketConnected, setSocketConnected] = useState(socket.connected);
 
   const refresh = useCallback(async () => {
@@ -35,11 +42,9 @@ export default function Home() {
     }
   }, []);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  useEffect(() => { refresh(); }, [refresh]);
 
-  // SocketIO subscription for real-time bus location updates
+  // SocketIO real-time
   useEffect(() => {
     const onConnect = () => setSocketConnected(true);
     const onDisconnect = () => setSocketConnected(false);
@@ -47,13 +52,7 @@ export default function Home() {
       setBuses((prev) =>
         prev.map((b) =>
           b.bus_id === payload.bus_id
-            ? {
-                ...b,
-                current_lat: payload.lat,
-                current_lng: payload.lng,
-                status: payload.status || b.status,
-                last_update: payload.last_update,
-              }
+            ? { ...b, current_lat: payload.lat, current_lng: payload.lng, status: payload.status || b.status, last_update: payload.last_update }
             : b
         )
       );
@@ -63,17 +62,15 @@ export default function Home() {
           : sel
       );
     };
-    const onBusAdded = () => refresh();
-
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("bus_location", onLocation);
-    socket.on("bus_added", onBusAdded);
+    socket.on("bus_added", refresh);
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("bus_location", onLocation);
-      socket.off("bus_added", onBusAdded);
+      socket.off("bus_added", refresh);
     };
   }, [refresh]);
 
@@ -82,16 +79,17 @@ export default function Home() {
     try {
       const r = await post("/routes/search", { origin, destination });
       setResults(r);
-      if (!r.origin_stop || !r.destination_stop) {
-        toast.error("No matching stops");
-      } else if (r.buses.length === 0) {
-        toast.message("No direct buses on that route");
-      }
-    } catch (e) {
+      if (!r.origin_stop || !r.destination_stop) toast.error("No matching stops");
+      else if (r.buses.length === 0) toast.message("No direct buses on that route");
+    } catch {
       toast.error("Search failed");
     }
     setSearching(false);
   };
+
+  const clearSearch = () => setResults(null);
+
+  const openQuickUpdate = (bus) => setUpdateLocBus(bus);
 
   const routeStops = results?.buses?.[0]?.segment_stops || null;
 
@@ -107,99 +105,123 @@ export default function Home() {
         selectedBus={selectedBus}
       />
 
-      {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none p-4 sm:p-6 flex items-start justify-between gap-2">
-        <div className="pointer-events-auto flex items-center gap-2 bg-background/95 backdrop-blur-2xl border border-border rounded-md px-3 py-2 shadow-sm">
-          <div className="w-7 h-7 rounded-sm bg-foreground text-background flex items-center justify-center">
-            <Bus className="w-4 h-4" />
+      {/* Top bar — compact */}
+      <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none p-3 sm:p-4 flex items-center justify-between gap-2">
+        <div className="pointer-events-auto flex items-center gap-2 bg-background/95 backdrop-blur-2xl border border-border rounded-md px-2.5 py-1.5 shadow-sm">
+          <div className="w-6 h-6 rounded-sm bg-foreground text-background flex items-center justify-center">
+            <Bus className="w-3.5 h-3.5" />
           </div>
-          <div>
-            <p className="font-display font-black tracking-tighter leading-none">TransitPulse</p>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-1">
-              <Radio className={`w-2.5 h-2.5 ${socketConnected ? "text-green-600 animate-pulse" : "text-muted-foreground"}`} />
-              {socketConnected ? "Live · realtime" : "Reconnecting…"}
+          <div className="leading-tight">
+            <p className="font-display font-black tracking-tighter text-sm">TransitPulse</p>
+            <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-1">
+              <Radio className={`w-2 h-2 ${socketConnected ? "text-green-600 animate-pulse" : "text-muted-foreground"}`} />
+              {socketConnected ? "Live" : "Offline"}
             </p>
           </div>
         </div>
 
-        <div className="pointer-events-auto flex items-center gap-2 flex-wrap justify-end">
+        <div className="pointer-events-auto flex items-center gap-1.5">
           <Button
-            variant="outline"
+            variant="default"
             size="sm"
-            onClick={() => setAddStopOpen(true)}
-            data-testid="open-add-stop"
-            className="rounded-md"
-          >
-            <MapPin className="w-4 h-4 sm:mr-1" />
-            <span className="hidden sm:inline">Add stop</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setAddBusOpen(true)}
-            data-testid="open-add-bus"
-            className="rounded-md"
-          >
-            <Plus className="w-4 h-4 sm:mr-1" />
-            <span className="hidden sm:inline">Add bus</span>
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setUpdateLocBus(buses[0] || null)}
+            onClick={() => setPickerOpen(true)}
             disabled={!buses.length}
-            data-testid="open-quick-update"
-            className="rounded-md font-bold"
+            data-testid="quick-update-button"
+            className="rounded-md font-bold h-9 px-3"
           >
-            <LocateFixed className="w-4 h-4 sm:mr-1" />
-            <span className="hidden sm:inline">Update location</span>
+            <LocateFixed className="w-4 h-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">Update</span>
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={toggle}
-            data-testid="theme-toggle"
-            className="rounded-md"
-          >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="rounded-md h-9 px-3" data-testid="add-menu-trigger">
+                <Plus className="w-4 h-4 sm:mr-1.5" />
+                <span className="hidden sm:inline">Add</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setAddBusOpen(true)} data-testid="menu-add-bus">
+                <Bus className="w-4 h-4 mr-2" /> Add bus
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setAddStopOpen(true)} data-testid="menu-add-stop">
+                <MapPin className="w-4 h-4 mr-2" /> Add stop
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button variant="outline" size="icon" onClick={toggle} data-testid="theme-toggle" className="rounded-md h-9 w-9">
             {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </Button>
         </div>
       </div>
 
-      {/* Left search + results panel */}
-      <div className="absolute top-28 sm:top-24 left-0 sm:left-6 z-20 pointer-events-none w-full sm:w-[400px] px-4 sm:px-0">
-        <div className="pointer-events-auto bg-background/95 backdrop-blur-2xl border border-border rounded-xl shadow-sm overflow-hidden">
-          <SearchPanel onSearch={onSearch} loading={searching} stops={stops} />
-          {results && (
-            <div className="border-t border-border max-h-[55vh] overflow-y-auto no-scrollbar">
-              <RouteResults results={results} onSelect={setSelectedBus} />
-            </div>
+      {/* Floating compact search — collapsed by default, expands on tap */}
+      <div className="absolute top-16 sm:top-20 left-0 right-0 sm:left-4 sm:right-auto z-20 pointer-events-none px-3 sm:px-0 sm:w-[520px]">
+        <div className="pointer-events-auto bg-background/95 backdrop-blur-2xl border border-border rounded-md shadow-sm overflow-hidden">
+          {!searchOpen && !results ? (
+            <button
+              onClick={() => setSearchOpen(true)}
+              data-testid="open-search-button"
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-secondary transition-colors"
+            >
+              <Search className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground flex-1">Search buses by source &amp; destination…</span>
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            </button>
+          ) : (
+            <>
+              <div className="flex items-center justify-between px-3 pt-2">
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">PLAN A TRIP</span>
+                <button
+                  onClick={() => { setSearchOpen(false); }}
+                  className="text-muted-foreground hover:text-foreground"
+                  data-testid="collapse-search-button"
+                  title="Collapse"
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </button>
+              </div>
+              <SearchPanel
+                onSearch={onSearch}
+                onClear={clearSearch}
+                loading={searching}
+                stops={stops}
+                hasResults={!!results}
+              />
+              {results && (
+                <div className="border-t border-border max-h-[45vh] overflow-y-auto no-scrollbar">
+                  <RouteResults results={results} onSelect={setSelectedBus} />
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
 
-      {/* Bottom-right stats card (desktop) */}
-      <div className="hidden md:flex absolute bottom-6 right-6 z-20 pointer-events-auto bg-background/95 backdrop-blur-2xl border border-border rounded-xl px-4 py-3 shadow-sm gap-6">
+      {/* Bottom-right stats card (desktop only) */}
+      <div className="hidden md:flex absolute bottom-5 right-5 z-20 pointer-events-auto bg-background/95 backdrop-blur-2xl border border-border rounded-md px-3 py-2 shadow-sm gap-5">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">BUSES</p>
-          <p className="font-display font-black text-2xl tracking-tighter" data-testid="stat-buses">{buses.length}</p>
+          <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">BUSES</p>
+          <p className="font-display font-black text-xl tracking-tighter" data-testid="stat-buses">{buses.length}</p>
         </div>
         <div>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">STOPS</p>
-          <p className="font-display font-black text-2xl tracking-tighter" data-testid="stat-stops">{stops.length}</p>
-        </div>
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">LIVE</p>
-          <p className={`font-display font-black text-2xl tracking-tighter ${socketConnected ? "text-green-600" : "text-muted-foreground"}`}>
-            ●
-          </p>
+          <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">STOPS</p>
+          <p className="font-display font-black text-xl tracking-tighter" data-testid="stat-stops">{stops.length}</p>
         </div>
       </div>
+
+      {/* Bus picker for the toolbar "Update" button */}
+      <BusPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        buses={buses}
+        onPick={(b) => { setPickerOpen(false); openQuickUpdate(b); }}
+      />
 
       <BusDetailSheet
         bus={selectedBus}
         open={!!selectedBus}
         onClose={() => setSelectedBus(null)}
-        onUpdateLocation={(b) => setUpdateLocBus(b)}
+        onUpdateLocation={openQuickUpdate}
       />
       <AddBusDialog
         open={addBusOpen}
@@ -219,5 +241,40 @@ export default function Home() {
         onUpdated={() => refresh()}
       />
     </div>
+  );
+}
+
+// Tiny inline bus picker dialog for the toolbar "Update location" CTA
+function BusPicker({ open, onClose, buses, onPick }) {
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md" data-testid="bus-picker-dialog">
+        <DialogHeader>
+          <DialogTitle className="font-display font-bold tracking-tight">Which bus are you on?</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-1 max-h-[60vh] overflow-y-auto">
+          {buses.length === 0 && <p className="text-sm text-muted-foreground p-3">No buses yet. Add one first.</p>}
+          {buses.map((b) => (
+            <button
+              key={b.bus_id}
+              data-testid={`pick-bus-${b.number}`}
+              onClick={() => onPick(b)}
+              className="w-full text-left border border-border rounded-md p-2.5 hover:border-foreground transition-colors flex items-center gap-3"
+            >
+              <div className="w-10 h-10 rounded-md bg-foreground text-background flex items-center justify-center font-display font-black tracking-tight text-sm">
+                {b.number}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm truncate">{b.name}</p>
+                {b.direction && <p className="text-xs text-muted-foreground truncate">{b.direction}</p>}
+              </div>
+              <span className={`text-[10px] uppercase tracking-wider rounded-sm px-1.5 py-0.5 ${statusBadge(b.status)}`}>
+                {statusLabel(b.status)}
+              </span>
+            </button>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
