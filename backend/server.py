@@ -187,6 +187,9 @@ def haversine(lat1, lng1, lat2, lng2) -> float:
     return 2 * R * math.asin(math.sqrt(a))
 
 
+VALID_STATUSES = {"running", "delayed", "arriving", "cancelled"}
+
+
 # ---------- Routes ----------
 @flask_app.get("/api/")
 def root():
@@ -240,11 +243,18 @@ def create_bus():
     if not number or not name or len(stops) < 2:
         return jsonify({"detail": "number, name, and at least 2 stops required"}), 400
     db = get_db()
-    # validate stops exist
+    # validate stops exist (use set comparison so duplicates aren't falsely flagged)
     placeholders = ",".join("?" * len(stops))
-    found = db.execute(f"SELECT stop_id FROM stops WHERE stop_id IN ({placeholders})", stops).fetchall()
-    if len(found) != len(stops):
-        return jsonify({"detail": "one or more stops not found"}), 400
+    found_ids = {r["stop_id"] for r in db.execute(
+        f"SELECT stop_id FROM stops WHERE stop_id IN ({placeholders})", stops
+    ).fetchall()}
+    missing = set(stops) - found_ids
+    if missing:
+        return jsonify({"detail": f"unknown stops: {sorted(missing)}"}), 400
+
+    status = body.get("status", "running")
+    if status not in VALID_STATUSES:
+        return jsonify({"detail": f"status must be one of {sorted(VALID_STATUSES)}"}), 400
 
     bid = uid("bus")
     db.execute(
@@ -254,7 +264,7 @@ def create_bus():
          (body.get("direction") or "").strip() or None,
          body.get("departure_time", "06:00"),
          body.get("arrival_time", "22:00"),
-         body.get("status", "running"),
+         status,
          now_iso()),
     )
     for pos, sid in enumerate(stops):
@@ -274,6 +284,8 @@ def update_location(bus_id):
     status = body.get("status")  # optional
     if lat is None or lng is None:
         return jsonify({"detail": "lat and lng required"}), 400
+    if status is not None and status not in VALID_STATUSES:
+        return jsonify({"detail": f"status must be one of {sorted(VALID_STATUSES)}"}), 400
     db = get_db()
     r = db.execute("SELECT * FROM buses WHERE bus_id = ?", (bus_id,)).fetchone()
     if not r:
