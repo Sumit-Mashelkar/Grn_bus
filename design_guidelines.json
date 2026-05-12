@@ -1,0 +1,88 @@
+{
+  "theme": "LIGHT",
+  "archetype": "Archetype 4: Swiss & High-Contrast",
+  "reasoning": "Transit and wayfinding applications demand clarity, speed, and objective data visualization. By utilizing a high-contrast, minimalist monochrome base, cognitive load is reduced drastically. Following the 'Swiss Brutalist' and 'Map as Hero' design patterns, color is strictly reserved for function (e.g., active route lines, live bus pulses, delay alerts) rather than decoration. This ensures maximum accessibility, immediate legibility in high-glare outdoor environments, and a trustworthy, authoritative feel.",
+  "color_palette": {
+    "light": {
+      "background": "#FFFFFF",
+      "surface": "#F4F4F5",
+      "text": "#09090B",
+      "text_muted": "#71717A",
+      "border": "#E4E4E7",
+      "primary": "#09090B",
+      "primary_foreground": "#FAFAFA",
+      "accent_functional_green": "#16A34A",
+      "accent_functional_red": "#DC2626",
+      "accent_functional_yellow": "#EAB308",
+      "accent_functional_blue": "#2563EB"
+    },
+    "dark": {
+      "background": "#09090B",
+      "surface": "#18181B",
+      "text": "#FAFAFA",
+      "text_muted": "#A1A1AA",
+      "border": "#27272A",
+      "primary": "#FAFAFA",
+      "primary_foreground": "#09090B",
+      "accent_functional_green": "#22C55E",
+      "accent_functional_red": "#EF4444",
+      "accent_functional_yellow": "#FACC15",
+      "accent_functional_blue": "#3B82F6"
+    }
+  },
+  "typography": {
+    "primary_font": "Cabinet Grotesk",
+    "secondary_font": "Manrope",
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl font-black tracking-tighter leading-none",
+      "h2": "text-2xl sm:text-3xl font-bold tracking-tight",
+      "h3": "text-xl sm:text-2xl font-bold tracking-tight",
+      "h4": "text-lg sm:text-xl font-semibold",
+      "body": "text-base font-medium leading-relaxed",
+      "small_label": "text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground"
+    }
+  },
+  "layout_and_spacing": {
+    "strategy": "Map as Hero (80/20 Rule)",
+    "container_padding": "p-4 sm:p-6 md:p-8",
+    "map_container": "fixed inset-0 z-0 h-screen w-screen",
+    "floating_ui_wrapper": "relative z-10 pointer-events-none flex flex-col justify-between h-[100dvh] w-full p-4 sm:p-6",
+    "floating_panel": "pointer-events-auto bg-background/95 backdrop-blur-2xl border border-border rounded-xl shadow-sm w-full md:w-[400px] overflow-hidden",
+    "bento_grid": "grid grid-cols-1 md:grid-cols-4 gap-4"
+  },
+  "components": {
+    "search_card": "Floating at top-left (desktop) or top (mobile). Minimalist input fields overriding Shadcn defaults with no ring offset, strong border focus: `focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary`.",
+    "route_details_sheet": "Bottom-docked on mobile, side-panel on desktop. Utilizes 'Optical Clarity' glassmorphism (`bg-background/90 backdrop-blur-xl border border-border`).",
+    "buttons": "Hard edges or slight radius (`rounded-md`). Primary buttons use solid monochrome (`bg-primary text-primary-foreground`). Hover states utilize `-translate-y-0.5` and slight shadow. No gradient buttons.",
+    "badges_and_trust_score": "High contrast pill badges. Trust score: stark black/white with a distinct functional color icon (e.g., solid star).",
+    "community_reports_feed": "Dense 'Control Room' list style. Use left border accents for status (Red for delay/cancel, Green for clear).",
+    "map_markers": "Do NOT use default Leaflet pins. Use custom HTML divIcons featuring geometric circles with thick borders (2px solid black or white) and a colored center to ensure extreme contrast against the map tiles."
+  },
+  "motion_and_interactions": {
+    "hover_states": "Explicit color contrast shifts and subtle transforms (`transition-all duration-200 ease-out`).",
+    "live_tracking": "Pulsing animation (`animate-pulse`) on the live bus marker to indicate active WebSocket connection and movement.",
+    "route_drawing": "If possible, animate the route line drawing from Start to Destination. Leaflet Ant Path or simple SVG stroke-dasharray animations.",
+    "accessibility": "Respect `prefers-reduced-motion` for all non-essential map transitions."
+  },
+  "assets_and_icons": {
+    "library": "lucide-react",
+    "map_tiles": {
+      "light": "CartoDB Positron (No-labels or minimal labels preferred to let UI text shine)",
+      "dark": "CartoDB Dark Matter"
+    }
+  },
+  "testing_attributes": {
+    "required": true,
+    "pattern": "All interactive elements MUST include `data-testid='kebab-case-role-name'` (e.g., `data-testid='search-route-button'`, `data-testid='report-delay-button'`)."
+  },
+  "instructions_to_main_agent": [
+    "Install `lucide-react` for system icons.",
+    "Use `react-leaflet` for the map interface. Import CartoDB tile URLs dynamically based on the current active theme (dark/light mode).",
+    "Do NOT use default image-based Leaflet markers. Implement custom `divIcon` for all map markers (start, end, buses, stops) utilizing Tailwind classes and Lucide icons to maintain the 'Swiss & High-Contrast' aesthetic.",
+    "Structure the layout with the Map in the absolute background (`fixed inset-0 z-0`). Overlay the UI inside a `pointer-events-none` wrapper, selectively applying `pointer-events-auto` only to interactive panels (search box, route details).",
+    "Apply 'Swiss & High-Contrast' color principles strictly. The UI itself (panels, buttons, inputs) must remain monochrome (black/white/gray). Functional colors (Green/Red/Yellow) should ONLY be applied to map routes, live trackers, ETA highlights, and critical alert states.",
+    "Import 'Cabinet Grotesk' (Headings) and 'Manrope' (Body) fonts. Configure them in Tailwind. Ensure heading hierarchies maintain tight letter spacing.",
+    "Integrate WebSockets with a subtle UI connection indicator (e.g., a tiny pulsing green dot in the header or next to the 'Live' badge).",
+    "Use Shadcn UI for forms, inputs, sheets, and dialogs, but customize the spacing and border-radii to match the technical, crisp archetype."
+  ]
+}
