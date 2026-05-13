@@ -1,0 +1,27 @@
+# Render Static Site config — TransitPulse frontend
+# Apply by either:
+#   (1) creating the Static Site in the Render dashboard and pasting these
+#       values into the matching fields, OR
+#   (2) committing render.yaml to repo root and using "Blueprint" deploy.
+
+services:
+  - type: web
+    name: transitpulse-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: yarn install --frozen-lockfile && yarn build
+    staticPublishPath: ./build
+    # SPA fallback so deep links (e.g. /dashboard) hit index.html
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: REACT_APP_BACKEND_URL
+        value: https://green-bus-me8a.onrender.com
+      - key: WDS_SOCKET_PORT
+        value: "443"
+    headers:
+      - path: /static/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable

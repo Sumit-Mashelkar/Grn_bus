@@ -28,7 +28,18 @@ DB_PATH = ROOT_DIR / "transitpulse.db"
 
 # ---------- Flask app ----------
 flask_app = Flask(__name__)
-CORS(flask_app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}})
+
+# CORS origins: comma-separated list from env (e.g. "https://transitpulse.onrender.com").
+# Defaults to "*" for local development. Browsers reject "*" with credentials, so
+# auth-free GET/POST works fine; for credentialed requests set the exact origin.
+_cors_env = os.environ.get("CORS_ORIGINS", "*")
+_cors_origins = [o.strip() for o in _cors_env.split(",") if o.strip()] or ["*"]
+_supports_creds = _cors_origins != ["*"]
+CORS(
+    flask_app,
+    supports_credentials=_supports_creds,
+    resources={r"/api/*": {"origins": _cors_origins}},
+)
 
 
 def now_iso() -> str:
@@ -380,7 +391,9 @@ def search_routes():
 
 
 # ---------- SocketIO (ASGI) ----------
-sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
+# Use the same origins as the Flask CORS config so the WS handshake matches.
+_sio_cors = _cors_origins if _cors_origins != ["*"] else "*"
+sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=_sio_cors)
 
 # Captured at lifespan startup so sync Flask handlers (running in worker threads
 # via WsgiToAsgi) can schedule emits on the main asyncio loop.
