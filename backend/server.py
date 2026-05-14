@@ -202,6 +202,10 @@ VALID_STATUSES = {"running", "delayed", "arriving", "cancelled"}
 
 
 # ---------- Routes ----------
+@app.route("/")
+def home():
+    return "Backend running"
+    
 @flask_app.get("/api/")
 def root():
     return jsonify({"app": "TransitPulse", "status": "ok"})
